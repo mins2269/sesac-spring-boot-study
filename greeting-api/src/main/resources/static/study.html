@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>스터디 참가 신청</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+            background: #f4f6fa;
+            color: #222;
+            margin: 0;
+            padding: 24px 16px;
+        }
+        main { max-width: 720px; margin: 0 auto; }
+        h1 { font-size: 24px; margin: 0 0 20px; }
+        section {
+            background: #fff;
+            border-radius: 10px;
+            padding: 18px 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,.08);
+        }
+        h2 { font-size: 16px; margin: 0 0 12px; }
+        .row { display: flex; gap: 8px; }
+        input {
+            flex: 1;
+            padding: 9px 12px;
+            border: 1px solid #ccd2dc;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            padding: 9px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #3b6df0;
+            color: #fff;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button:hover { background: #2c58cc; }
+        button.secondary { background: #6b7587; }
+        button.secondary:hover { background: #555e6e; }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: inherit;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        #message {
+            background: #eef3ff;
+            border-left: 4px solid #3b6df0;
+            padding: 12px 14px;
+            border-radius: 6px;
+            min-height: 44px;
+        }
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .list-header h2 { margin: 0; }
+        #list { min-height: 40px; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>스터디 참가 신청</h1>
+
+    <section>
+        <h2>결과 메시지</h2>
+        <div id="message"><pre id="messageText">원하는 기능을 사용해 보세요.</pre></div>
+    </section>
+
+    <section>
+        <h2>참가 신청</h2>
+        <div class="row">
+            <input type="text" id="nameInput" placeholder="이름">
+            <button id="registerBtn">신청</button>
+        </div>
+    </section>
+
+    <section>
+        <h2>참가 취소</h2>
+        <div class="row">
+            <input type="text" id="memberIdInput" placeholder="취소할 id (신청 결과의 id)">
+            <button id="cancelBtn">취소</button>
+        </div>
+    </section>
+
+    <section>
+        <h2>정원 변경</h2>
+        <div class="row">
+            <input type="text" id="capacityInput" placeholder="새 정원 (1~10)">
+            <button id="capacityBtn">변경</button>
+        </div>
+    </section>
+
+    <section>
+        <div class="list-header">
+            <h2>명단</h2>
+            <button id="refreshBtn" class="secondary">새로고침</button>
+        </div>
+        <pre id="list"></pre>
+    </section>
+</main>
+
+<script>
+    const BASE = "/study";
+
+    const messageText = document.getElementById("messageText");
+    const listEl = document.getElementById("list");
+
+    function showMessage(text) {
+        messageText.textContent = text;
+    }
+
+    // POST 요청: URLSearchParams -> application/x-www-form-urlencoded
+    async function post(path, key, value) {
+        const params = new URLSearchParams();
+        params.append(key, value);
+        const res = await fetch(BASE + path, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: params
+        });
+        return await res.text();
+    }
+
+    async function loadList() {
+        try {
+            const res = await fetch(BASE + "/participants");
+            listEl.textContent = await res.text();
+        } catch (e) {
+            listEl.textContent = "명단을 불러오지 못했습니다. 서버가 실행 중인지 확인해 주세요.";
+        }
+    }
+
+    async function submit(path, key, inputId) {
+        const input = document.getElementById(inputId);
+        try {
+            const text = await post(path, key, input.value);
+            showMessage(text);
+            input.value = "";
+        } catch (e) {
+            showMessage("요청에 실패했습니다. 서버가 실행 중인지 확인해 주세요.");
+        }
+        await loadList();
+    }
+
+    document.getElementById("registerBtn").addEventListener("click", () =>
+        submit("/participants", "name", "nameInput"));
+    document.getElementById("cancelBtn").addEventListener("click", () =>
+        submit("/cancel", "memberId", "memberIdInput"));
+    document.getElementById("capacityBtn").addEventListener("click", () =>
+        submit("/capacity", "capacity", "capacityInput"));
+    document.getElementById("refreshBtn").addEventListener("click", loadList);
+
+    // Enter 키로도 제출
+    [["nameInput", "registerBtn"], ["memberIdInput", "cancelBtn"], ["capacityInput", "capacityBtn"]]
+        .forEach(([inputId, btnId]) => {
+            document.getElementById(inputId).addEventListener("keydown", (e) => {
+                if (e.isComposing) return;   // 한글 조합 중이면 무시
+                if (e.key === "Enter") document.getElementById(btnId).click();
+            });
+        });
+
+    loadList();
+</script>
+</body>
+</html>
