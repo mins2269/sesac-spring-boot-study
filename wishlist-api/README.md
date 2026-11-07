@@ -63,8 +63,8 @@ Postman으로 각 API를 호출한 결과와 단위 테스트 실행 결과입�
 ### 1. 등록 (POST)
 
 `POST /wish` — 용품을 등록하면 서버가 부여한 `id`와 함께 등록된 내용이 반환됩니다.
+<img width="757" height="868" alt="post" src="https://github.com/user-attachments/assets/d222bebf-7459-4dbe-8019-90f496c40d2b" />
 
-![등록 결과](<img width="757" height="868" alt="post" src="https://github.com/user-attachments/assets/14f370da-7bbc-4512-bc8e-579566457c7a" />)
 
 ### 2. 전체 조회 (GET)
 
