@@ -1,8 +1,9 @@
 # 외부 상품 연동과 장바구니
 
-Spring Boot로 만든 위시리스트 서버입니다. DummyJSON의 외부 상품을 검색해 위시리스트로 가져오고, 장바구니에서 수량·재고·쿠폰·배송비를 계산해 최종 결제 금액을 미리 보여 줍니다. 모든 데이터는 메모리에만 저장하므로 서버를 재시작하면 사라집니다.
+Spring Boot로 만든 위시리스트 서버입니다. DummyJSON의 외부 상품을 검색해 위시리스트로 가져오고, 장바구니에서 수량·재고·쿠폰·배송비를 계산해 최종 결제 금액을 미리 보여 줍니다. 위시리스트와 장바구니는 **Docker로 띄운 MySQL**에 저장합니다. 실행 방법, 계산 규칙, 테스트·QA 결과를 이 README에 기록했습니다.
 
-- Java 17 / Spring Boot 4 / Gradle
+- Java 17 / Spring Boot 4 / Gradle(Kotlin DSL, `build.gradle.kts`)
+- DB: MySQL 8 (Docker), `NamedParameterJdbcTemplate`으로 SQL 직접 작성 (JPA 미사용)
 - 외부 API: [DummyJSON Products](https://dummyjson.com/docs/products) (`RestClient` 사용)
 - 화면: 순수 HTML/CSS/JS (`src/main/resources/static/`, 외부 라이브러리·CDN 없음)
 
@@ -13,6 +14,7 @@ Spring Boot로 만든 위시리스트 서버입니다. DummyJSON의 외부 상�
 | 1단계 | 외부 상품 목록·검색·단건 조회, 외부 상품을 위시리스트로 가져오기(중복 방지), 가격 환산(BigDecimal), 외부 오류를 502/404로 변환, 연결·읽기 타임아웃 |
 | 2단계 | 장바구니 담기/조회/수량 변경/삭제, 수량 1~5와 재고 검증, 동일 상품 합산, 쿠폰 적용 미리보기, 배송비 계산 |
 | 3단계(선택) | 최종 금액이 가장 낮은 쿠폰 추천, 농구용품 쇼핑몰 화면(순수 HTML/CSS/JS) |
+| 4단계 | Docker MySQL 연동. 위시리스트·장바구니를 DB에 저장(`DatabaseWishRepository`, `DatabaseCartRepository`) |
 
 기존 위시리스트 CRUD 및 추천 기능과 테스트는 그대로 유지했습니다.
 
@@ -55,6 +57,32 @@ DummyJSON의 상품을 조회하고 내 위시리스트로 가져옵니다.
 - 외부 연동 검증(타임아웃, 404/502 변환 등)은 모두 DummyJSON 기준으로 했습니다. 농구 목록은 네트워크 호출이 없어 이런 검증 대상이 아닙니다.
 - 카테고리 칩(농구공, 농구화 등)은 농구 목록 기준입니다. DummyJSON 상태에서는 결과가 비는 칩이 많습니다.
 - 사진 주소가 없는 상품은 카테고리별 아이콘 타일로 표시하고, 재고 0은 "품절", 5개 이하는 "품절 임박"으로 표시합니다.
+
+### 4단계. Docker MySQL 연동
+
+메모리에만 저장하던 위시리스트·장바구니를 Docker로 띄운 MySQL에 저장하도록 바꿨습니다.
+
+#### 책 실습과 개인 과제의 변경 범위
+
+| 구분 | 내용 | 서비스 코드 변경 |
+|---|---|---|
+| 책 실습 | Docker 설치, MySQL 컨테이너 실행, 기존 도메인 객체에 맞는 스키마·테이블 생성, `build.gradle.kts` 의존성(`spring-boot-starter-jdbc`, `mysql-connector-j`)과 접속 정보 추가, `DatabaseWishRepository`로 위시 저장소 교체 | 없음 |
+| 개인 과제 | 장바구니 DB 저장소(`DatabaseCartRepository`) 추가, `Cart.restore`·`CartItem.restore`·`CartRepository.save` 추가, 예외 변환 | `CartService` 소폭 수정 |
+
+- **위시 쪽**: `WishRepository` 인터페이스가 도메인에 있고 서비스가 이 인터페이스에만 의존하므로(DIP), 서비스 코드는 바꾸지 않고 구현체만 `DatabaseWishRepository`로 교체했습니다. 메서드별 INSERT/SELECT/UPDATE/DELETE/COUNT SQL을 작성했고, `RowMapper`로 행을 `Wish`로 변환합니다.
+- **장바구니 쪽**: `DatabaseCartRepository`가 조회 시 `Cart.restore`로 도메인 객체를 복원하고, 저장 시 트랜잭션 안에서 전체 교체(DELETE 후 INSERT)합니다. `CartService`의 변경 메서드(`addItem`/`changeQuantity`/`removeItem`)가 끝난 뒤 `save`를 호출합니다.
+- **예외 변환**: `DuplicateKeyException` → `ConflictException`(409), 조회 실패 → `NotFoundException`(404)
+- 기존 메모리 저장소(`ListWishRepository` 등)는 지우지 않고 남겨 두었고, `@Primary`로 DB 저장소가 우선 사용됩니다.
+- 규칙은 도메인에서 1차 검사하고, DB 제약(`NOT NULL`, `UNIQUE`, `CHECK`)이 2차 안전장치 역할을 합니다.
+
+#### DB 스키마
+
+| 테이블 | 설명 | 제약 |
+|---|---|---|
+| `wish` | 위시리스트 | PK, `external_id` UNIQUE(외부 상품 중복 방지), `price >= 0` CHECK |
+| `cart_item` | 장바구니 항목 | PK, `wish_id` UNIQUE, `quantity BETWEEN 1 AND 5` CHECK |
+
+전체 DDL은 `<schema.sql 경로>`를 참고하세요.
 
 ## API 명세
 
@@ -168,10 +196,13 @@ DummyJSON의 상품을 조회하고 내 위시리스트로 가져옵니다.
 `RestClientConfig`의 `connectTimeout`을 `Duration.ofMillis(2)`로 낮춘 뒤 `GET /external-products?limit=3`을 호출한 결과입니다. 연결을 맺기도 전에 시간이 초과되어 외부 오류가 502로 변환되는지 확인했습니다. (확인 후 원래 값 2초로 복구)
 ![연결 타임아웃 2ms 결과](docs/images/connecttime.png)
 
+
+
 ## 남은 이슈와 정책
 
-- **저장소는 메모리**이고 서버를 다시 켜면 모두 사라집니다.
-- **스레드 안전성 미적용**: 장바구니와 위시 저장소는 단일 사용자·단일 스레드를 가정합니다. 동시에 여러 요청이 들어오면 id 중복이나 합계 오류가 생길 수 있습니다. (동기화 또는 DB 트랜잭션 필요)
-- **장바구니는 서버 전체에서 하나**입니다. 사용자 구분(세션·로그인)이 없습니다.
+- **`getRecommendWishList`의 DB 구현이 남아 있습니다.**
+- **장바구니는 서버 전체에서 하나**입니다. 사용자별 장바구니(`user_id`)를 지원하지 않습니다. 사용자 구분(세션·로그인)도 없습니다.
+- **스레드 안전성은 아직 적용하지 않았습니다.** DB 제약(UNIQUE)으로 중복 저장은 막지만, 서비스의 "조회 → 검증 → 저장"을 하나의 트랜잭션으로 묶지는 않았습니다. 동시 요청이 들어오면 합계 오류가 생길 수 있습니다. (트랜잭션 경계 정리 필요)
+- **장바구니 저장은 전체 교체(DELETE 후 INSERT) 방식**입니다. 단순하지만 항목이 많아지면 비효율적일 수 있습니다.
 - **재고는 가져온 시점의 값(스냅샷)** 입니다. 외부 상품의 재고가 이후에 바뀌어도 반영되지 않고, 담기 시 재고를 차감하지도 않습니다.
 - **가져온 뒤에는 외부와 연결이 끊깁니다.** 외부 가격이 변해도 위시/장바구니 가격은 그대로입니다.
