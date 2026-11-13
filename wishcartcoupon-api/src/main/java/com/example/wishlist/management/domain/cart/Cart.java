@@ -101,4 +101,13 @@ public class Cart {
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException("장바구니 항목을 찾을 수 없습니다. itemId=" + itemId));
     }
+
+    // Cart.java에 추가
+    public static Cart restore(List<CartItem> savedItems) {
+        Cart cart = new Cart();
+        cart.items.addAll(savedItems);
+        long maxId = savedItems.stream().mapToLong(CartItem::getId).max().orElse(0L);
+        cart.nextItemId = maxId + 1;     // 다음에 담을 항목의 id가 겹치지 않게
+        return cart;
+    }
 }

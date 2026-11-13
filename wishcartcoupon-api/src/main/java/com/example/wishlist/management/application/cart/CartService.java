@@ -20,7 +20,10 @@ public class CartService {
 
     public CartItem addItem(long wishId, int quantity) {
         Wish wish = wishRepository.getWish(wishId);          // 없으면 404
-        return cartRepository.get().add(wish, quantity);
+        Cart cart = cartRepository.get();
+        CartItem item = cart.add(wish, quantity);
+        cartRepository.save(cart);
+        return item;
     }
 
     public List<CartItem> getItems() {
@@ -29,11 +32,16 @@ public class CartService {
 
     // 장바구니 행 id만 사용하므로 원본 위시가 삭제돼도 동작한다
     public CartItem changeQuantity(long itemId, int quantity) {
-        return cartRepository.get().changeQuantity(itemId, quantity);
+        Cart cart = cartRepository.get();
+        CartItem item = cart.changeQuantity(itemId, quantity);
+        cartRepository.save(cart);
+        return item;
     }
 
     public void removeItem(long itemId) {
-        cartRepository.get().remove(itemId);
+        Cart cart = cartRepository.get();
+        cart.remove(itemId);
+        cartRepository.save(cart);
     }
 
     public CartPreview preview(String coupon) {

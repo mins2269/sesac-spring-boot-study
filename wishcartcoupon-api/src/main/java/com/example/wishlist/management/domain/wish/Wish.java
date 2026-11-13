@@ -1,5 +1,7 @@
 package com.example.wishlist.management.domain.wish;
 
+import java.util.Objects;
+
 // domain/Wish.java
 public class Wish {
     private static final int MAX_NAME_LENGTH = 100;
@@ -18,12 +20,14 @@ public class Wish {
     }
 
     // 외부 상품 가져오기용 (정적 팩토리 메서드)
+    // externalId는 externalId에 지정된다.
+    // 0L: 임시값
     public static Wish external(Long externalId, String name, Integer price, Integer stock) {
         return new Wish(0L, name, price, SourceType.EXTERNAL, externalId, stock);
     }
 
-    private Wish(Long id, String name, Integer price,
-                 SourceType sourceType, Long externalId, Integer stock) {
+    public Wish(Long id, String name, Integer price,
+                SourceType sourceType, Long externalId, Integer stock) {
         if (name == null || price == null) {
             throw new IllegalArgumentException("이름과 가격은 필수입니다.");
         }
@@ -53,9 +57,10 @@ public class Wish {
     public Long getExternalId() { return externalId; }
     public Integer getStock() { return stock; }
 
-    public boolean sameId(Long id) { return this.id == id; }
-    public boolean isExternal() { return sourceType == SourceType.EXTERNAL; }
+    public boolean sameId(Long id) {
+        return Objects.equals(this.id, id);
+    }    public boolean isExternal() { return sourceType == SourceType.EXTERNAL; }
     public boolean sameExternalId(Long externalId) {
-        return this.externalId != null && this.externalId == externalId;
+        return this.externalId != null && this.externalId.equals(externalId);
     }
 }

@@ -24,6 +24,7 @@ public class CartItem {
     }
 
     // 처음 담을 때: 위시의 현재 값을 복사해서 새 행을 만든다
+    // 장바구니 담기 전, 품절 상품인지 체크
     static CartItem copyOf(long id, Wish wish, int quantity) {
         requiredValidQuantity(quantity);
         Integer stock = wish.getStock();
@@ -72,6 +73,12 @@ public class CartItem {
         if (stock != null && quantity > stock) {
             throw new ConflictException("재고를 초과할 수 없습니다. stock=" + stock + ", 요청 수량=" + quantity);
         }
+    }
+
+    // CartItem.java에 추가 (infrastructure가 다른 패키지라서 public)
+    public static CartItem restore(long id, long wishId, String name,
+                                   int price, Integer stock, int quantity) {
+        return new CartItem(id, wishId, name, price, stock, quantity);
     }
 
     public long getId() { return id; }
