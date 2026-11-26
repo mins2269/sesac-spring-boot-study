@@ -169,6 +169,25 @@ class ParticipationApiTest extends ApiTestSupport {
     }
 
     @Test
+    @DisplayName("재가입도 정원과 시간 겹침을 다시 검사한다")
+    void rejoinChecksCapacityAndOverlap() throws Exception {
+        var body = studyBody("MONDAY", "19:00", "21:00");
+        body.put("capacity", 2);
+        long studyId = createdStudyId(loginAs("owner"), body);
+        MockHttpSession member = loginAs("member");
+        join(member, studyId);
+        leave(member, studyId);
+
+        MockHttpSession other = loginAs("other");
+        join(other, studyId).andExpect(status().isCreated());
+        expectError(join(member, studyId), 409, "정원이 가득 찼습니다.");
+        leave(other, studyId);
+        createStudy(member, studyBody("MONDAY", "20:00", "22:00")).andExpect(status().isCreated());
+        expectError(join(member, studyId), 409, "기존 스터디 시간과 겹칩니다.");
+        assertThat(reasonsOf("member")).containsExactly("LEFT");
+    }
+
+    @Test
     @DisplayName("삭제하면 스터디장과 현재 참여자에게만 삭제 이력이 남고, 이력은 최신순이다")
     void historiesAfterDelete() throws Exception {
         MockHttpSession owner = loginAs("owner");

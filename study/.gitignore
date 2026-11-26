@@ -38,3 +38,6 @@ out/
 
 ### Local secrets ###
 .env
+
+### curl example session cookies ###
+*.cookie
