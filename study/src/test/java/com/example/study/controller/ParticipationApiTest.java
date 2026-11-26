@@ -205,6 +205,8 @@ class ParticipationApiTest extends ApiTestSupport {
         long studyId = createdStudyId(owner, studyBody("MONDAY", "19:00", "21:00"));
         join(loginAs("member"), studyId);
         Long ownerId = jdbcTemplate.queryForObject("select owner_id from study where id = ?", Long.class, studyId);
+        jdbcTemplate.update("insert into schedule (study_id, meeting_at, place, content) "
+                + "values (?, '2030-01-01 19:00', '카페', '모임')", studyId);
         // 마지막 단계인 스터디 삭제만 실패하도록, 스터디를 참조하는 임시 테이블을 만든다.
         jdbcTemplate.execute("create table delete_blocker (study_id bigint not null, "
                 + "foreign key (study_id) references study (id))");
@@ -216,6 +218,7 @@ class ParticipationApiTest extends ApiTestSupport {
 
             assertThat(count("study")).isEqualTo(1);
             assertThat(count("study_member")).isEqualTo(2);
+            assertThat(count("schedule")).isEqualTo(1);
             assertThat(count("study_history")).isZero();
         } finally {
             jdbcTemplate.execute("drop table delete_blocker");

@@ -82,7 +82,7 @@ public class StudyDeletionService {
         }
 
         studyHistoryRepository.saveAll(study.deletionHistories(LocalDateTime.now(clock)));
-        // cascade로 참여 정보도 함께 삭제된다.
+        // cascade로 일정과 참여 정보도 함께 삭제된다.
         studyRepository.delete(study);
         return true;
     }

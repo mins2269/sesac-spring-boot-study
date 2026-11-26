@@ -66,6 +66,10 @@ public class Study {
     @OneToMany(mappedBy = "study", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StudyMember> members = new ArrayList<>();
 
+    /** 스터디를 삭제하면 일정도 삭제된다. 조회는 Repository를 사용한다. */
+    @OneToMany(mappedBy = "study", cascade = CascadeType.ALL)
+    private List<Schedule> schedules = new ArrayList<>();
+
     protected Study() {
     }
 
@@ -136,6 +140,33 @@ public class Study {
         StudyHistory history = new StudyHistory(leaving.getMember(), this, HistoryReason.LEFT, endedAt);
         removeMember(leaving);
         return history;
+    }
+
+    /**
+     * 모임 일정을 등록한다.
+     *
+     * @param now 한국 시간의 현재 시각
+     */
+    public Schedule addSchedule(Long requesterId, LocalDateTime meetingAt, String place, String content,
+            LocalDateTime now) {
+        validateOwner(requesterId);
+        if (!meetingAt.isAfter(now)) {
+            throw new BusinessException(ErrorCode.PAST_SCHEDULE);
+        }
+        // DB의 datetime이 저장할 수 있는 범위
+        if (meetingAt.getYear() > 9999) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        Schedule schedule = new Schedule(this, meetingAt, place, content);
+        schedules.add(schedule);
+        return schedule;
+    }
+
+    /** 스터디장과 현재 참여자만 일정을 볼 수 있다. (스터디장도 참여 정보에 있다) */
+    public void validateScheduleReader(Long memberId) {
+        if (!isOwner(memberId) && !hasMember(memberId)) {
+            throw new BusinessException(ErrorCode.SCHEDULE_ACCESS_DENIED);
+        }
     }
 
     public void changeRecruitStatus(Long requesterId, RecruitStatus recruitStatus) {

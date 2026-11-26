@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.time.DayOfWeek;
+import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ import com.example.study.DatabaseCleaner;
 import com.example.study.IntegrationTest;
 import com.example.study.common.exception.ErrorCode;
 import com.example.study.domain.RecruitStatus;
+import com.example.study.dto.CreateScheduleRequest;
 import com.example.study.dto.CreateStudyRequest;
 import com.example.study.dto.SignupRequest;
 import com.example.study.repository.StudyRepository;
@@ -41,6 +43,8 @@ class StudyConcurrencyTest {
     StudyService studyService;
     @Autowired
     StudyDeletionService studyDeletionService;
+    @Autowired
+    ScheduleService scheduleService;
     @Autowired
     StudyRepository studyRepository;
     @Autowired
@@ -115,6 +119,48 @@ class StudyConcurrencyTest {
         assertThat(jdbcTemplate.queryForList(
                 "select concat(member_id, ':', reason) from study_history order by member_id", String.class))
                 .containsExactly(owner + ":OWNER_DELETED", joiner + ":STUDY_DELETED");
+    }
+
+    @RepeatedTest(10)
+    @DisplayName("일정 등록과 삭제가 겹치면 삭제는 성공하고 일정은 남지 않는다")
+    void registerScheduleWhileDeleting() throws Exception {
+        Long owner = member("owner");
+        Long studyId = studyService.open(owner, request()).id();
+        var schedule = new CreateScheduleRequest(LocalDateTime.of(2099, 1, 1, 19, 0), "카페", "모임");
+        Callable<?> register = () -> scheduleService.register(owner, studyId, schedule);
+        Callable<?> delete = () -> {
+            studyDeletionService.delete(owner, studyId);
+            return null;
+        };
+
+        var outcomes = runTogether(List.of(delete, register, register, register));
+
+        assertThat(outcomes.getFirst().success()).isTrue();
+        assertThat(outcomes).allMatch(o -> o.success() || o.error() == ErrorCode.STUDY_NOT_FOUND);
+        assertThat(count("schedule")).isZero();
+        assertThat(count("study")).isZero();
+    }
+
+    @Test
+    @DisplayName("삭제가 스터디 잠금을 기다리는 동안 등록된 일정도 함께 삭제한다")
+    void deletionSeesScheduleAddedWhileWaiting() throws Exception {
+        Long owner = member("owner");
+        Long studyId = studyService.open(owner, request()).id();
+
+        try (ExecutorService executor = Executors.newSingleThreadExecutor()) {
+            Future<?> deletion = new TransactionTemplate(transactionManager).execute(status -> {
+                studyRepository.findByIdForUpdate(studyId).orElseThrow();
+                Future<?> future = executor.submit(() -> studyDeletionService.delete(owner, studyId));
+                assertThatThrownBy(() -> future.get(1, TimeUnit.SECONDS)).isInstanceOf(TimeoutException.class);
+                jdbcTemplate.update("insert into schedule (study_id, meeting_at, place, content) "
+                        + "values (?, '2099-01-01 19:00', '카페', '모임')", studyId);
+                return future;
+            });
+            deletion.get(10, TimeUnit.SECONDS);
+        }
+
+        assertThat(count("schedule")).isZero();
+        assertThat(count("study")).isZero();
     }
 
     private Long member(String name) {

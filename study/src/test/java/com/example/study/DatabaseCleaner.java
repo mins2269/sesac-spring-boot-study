@@ -14,7 +14,7 @@ public class DatabaseCleaner {
     }
 
     public void clean() {
-        for (String table : new String[] { "study_history", "study_member", "study", "member", "profile" }) {
+        for (String table : new String[] { "study_history", "schedule", "study_member", "study", "member", "profile" }) {
             jdbcTemplate.update("delete from " + table);
         }
     }
