@@ -102,6 +102,42 @@ public class Study {
                 && other.startTime.isBefore(endTime);
     }
 
+    /**
+     * 참여와 재가입. 중복 참여 → 모집 상태 → 정원 → 시간 겹침 순서로 검사한다.
+     *
+     * @param participatingStudies 회원이 개설했거나 참여 중인 모든 스터디
+     */
+    public void join(Member member, List<Study> participatingStudies) {
+        if (hasMember(member.getId())) {
+            throw new BusinessException(ErrorCode.ALREADY_JOINED);
+        }
+        if (recruitStatus != RecruitStatus.RECRUITING) {
+            throw new BusinessException(ErrorCode.RECRUITMENT_CLOSED);
+        }
+        if (members.size() >= capacity) {
+            throw new BusinessException(ErrorCode.STUDY_FULL);
+        }
+        if (participatingStudies.stream().anyMatch(this::overlaps)) {
+            throw new BusinessException(ErrorCode.TIME_OVERLAP);
+        }
+        // 정원이 차도 모집 상태는 바꾸지 않는다.
+        addMember(member);
+    }
+
+    /** 참여 정보를 제거하고 남길 이력을 반환한다. */
+    public StudyHistory leave(Long memberId, LocalDateTime endedAt) {
+        if (isOwner(memberId)) {
+            throw new BusinessException(ErrorCode.OWNER_CANNOT_LEAVE);
+        }
+        StudyMember leaving = members.stream()
+                .filter(studyMember -> studyMember.isMember(memberId))
+                .findFirst()
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_PARTICIPANT));
+        StudyHistory history = new StudyHistory(leaving.getMember(), this, HistoryReason.LEFT, endedAt);
+        removeMember(leaving);
+        return history;
+    }
+
     public void changeRecruitStatus(Long requesterId, RecruitStatus recruitStatus) {
         validateOwner(requesterId);
         this.recruitStatus = recruitStatus;
@@ -144,6 +180,12 @@ public class Study {
     /** 양방향 관계의 양쪽 값을 함께 맞춘다. */
     private void addMember(Member member) {
         members.add(new StudyMember(this, member));
+    }
+
+    /** 목록에서 빠진 가입 정보는 orphanRemoval로 삭제된다. */
+    private void removeMember(StudyMember studyMember) {
+        members.remove(studyMember);
+        studyMember.detach();
     }
 
     public Long getId() {

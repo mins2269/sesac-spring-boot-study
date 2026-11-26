@@ -7,7 +7,6 @@ import com.example.study.common.exception.ErrorCode;
 import com.example.study.domain.Member;
 import com.example.study.domain.Study;
 import com.example.study.dto.CreateStudyRequest;
-import com.example.study.dto.MyStudiesResponse;
 import com.example.study.dto.RecruitStatusRequest;
 import com.example.study.dto.StudyDetailResponse;
 import com.example.study.dto.StudySummaryResponse;
@@ -56,10 +55,6 @@ public class StudyService {
         Study study = studyRepository.findWithOwnerById(studyId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.STUDY_NOT_FOUND));
         return StudyDetailResponse.of(study, memberId);
-    }
-
-    public MyStudiesResponse getMyStudies(Long memberId) {
-        return new MyStudiesResponse(studyRepository.findOwnedSummaries(memberId));
     }
 
     @Transactional(isolation = Isolation.READ_COMMITTED)

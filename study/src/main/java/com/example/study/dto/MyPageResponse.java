@@ -7,10 +7,13 @@ public record MyPageResponse(
         String email,
         String name,
         String introduction,
-        List<StudySummaryResponse> ownedStudies) {
+        List<StudySummaryResponse> ownedStudies,
+        List<StudySummaryResponse> joinedStudies,
+        List<HistoryResponse> histories) {
 
-    public static MyPageResponse of(MemberResponse member, MyStudiesResponse studies) {
+    public static MyPageResponse of(MemberResponse member, MyStudiesResponse studies,
+            List<HistoryResponse> histories) {
         return new MyPageResponse(member.id(), member.email(), member.name(), member.introduction(),
-                studies.ownedStudies());
+                studies.ownedStudies(), studies.joinedStudies(), histories);
     }
 }

@@ -21,6 +21,11 @@ public enum ErrorCode {
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
     INVALID_STUDY_TIME(HttpStatus.BAD_REQUEST, "시작 시각은 종료 시각보다 빨라야 합니다."),
     NOT_STUDY_OWNER(HttpStatus.FORBIDDEN, "스터디장만 할 수 있습니다."),
+    OWNER_CANNOT_LEAVE(HttpStatus.FORBIDDEN, "스터디장은 탈퇴할 수 없습니다. 스터디를 삭제해 주세요."),
+    NOT_PARTICIPANT(HttpStatus.NOT_FOUND, "참여 중인 스터디가 아닙니다."),
+    ALREADY_JOINED(HttpStatus.CONFLICT, "이미 참여 중인 스터디입니다."),
+    RECRUITMENT_CLOSED(HttpStatus.CONFLICT, "모집이 마감된 스터디입니다."),
+    STUDY_FULL(HttpStatus.CONFLICT, "정원이 가득 찼습니다."),
     STUDY_NOT_FOUND(HttpStatus.NOT_FOUND, "스터디를 찾을 수 없습니다."),
     TIME_OVERLAP(HttpStatus.CONFLICT, "기존 스터디 시간과 겹칩니다."),
     CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "다른 요청과 겹쳤습니다. 잠시 후 다시 시도해 주세요.");

@@ -37,6 +37,14 @@ public interface StudyRepository extends JpaRepository<Study, Long> {
     @Query(SELECT_SUMMARY + " where o.id = :memberId " + GROUP_AND_ORDER)
     List<StudySummaryResponse> findOwnedSummaries(@Param("memberId") Long memberId);
 
+    /** 참여 중인 스터디. 본인이 개설한 스터디는 제외한다. */
+    @Query(SELECT_SUMMARY + """
+             where o.id <> :memberId
+               and exists (select 1 from StudyMember mine
+                           where mine.study = s and mine.member.id = :memberId)
+            """ + GROUP_AND_ORDER)
+    List<StudySummaryResponse> findJoinedSummaries(@Param("memberId") Long memberId);
+
     /** 회원이 개설했거나 참여 중인 모든 스터디. 시간 겹침 검사에 쓴다. */
     @Query("select sm.study from StudyMember sm where sm.member.id = :memberId")
     List<Study> findAllByParticipant(@Param("memberId") Long memberId);
