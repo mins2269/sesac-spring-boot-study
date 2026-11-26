@@ -3,9 +3,12 @@ package com.example.study.controller;
 import com.example.study.common.auth.LoginMember;
 import com.example.study.common.auth.PublicApi;
 import com.example.study.dto.MemberResponse;
+import com.example.study.dto.MyPageResponse;
+import com.example.study.dto.MyStudiesResponse;
 import com.example.study.dto.SignupRequest;
 import com.example.study.dto.UpdateMemberRequest;
 import com.example.study.service.MemberService;
+import com.example.study.service.StudyService;
 
 import jakarta.validation.Valid;
 
@@ -24,8 +27,11 @@ public class MemberController {
 
     private final MemberService memberService;
 
-    public MemberController(MemberService memberService) {
+    private final StudyService studyService;
+
+    public MemberController(MemberService memberService, StudyService studyService) {
         this.memberService = memberService;
+        this.studyService = studyService;
     }
 
     @PublicApi
@@ -36,8 +42,13 @@ public class MemberController {
     }
 
     @GetMapping("/me")
-    public MemberResponse getMe(@LoginMember Long memberId) {
-        return memberService.getMember(memberId);
+    public MyPageResponse getMe(@LoginMember Long memberId) {
+        return MyPageResponse.of(memberService.getMember(memberId), studyService.getMyStudies(memberId));
+    }
+
+    @GetMapping("/me/studies")
+    public MyStudiesResponse getMyStudies(@LoginMember Long memberId) {
+        return studyService.getMyStudies(memberId);
     }
 
     @PatchMapping("/me")

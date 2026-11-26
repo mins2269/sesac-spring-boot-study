@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.util.Map;
 
+import com.example.study.DatabaseCleaner;
 import com.example.study.IntegrationTest;
 import com.example.study.domain.Member;
 import com.example.study.repository.MemberRepository;
@@ -43,9 +44,12 @@ class MemberApiTest {
     @Autowired
     PasswordEncoder passwordEncoder;
 
+    @Autowired
+    DatabaseCleaner databaseCleaner;
+
     @BeforeEach
     void clean() {
-        memberRepository.deleteAll();
+        databaseCleaner.clean();
     }
 
     @Test

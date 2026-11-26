@@ -8,6 +8,7 @@ import java.lang.annotation.Target;
 
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
 
 /**
  * 통합 테스트의 공통 설정. 설정이 같으면 Spring 컨텍스트를 하나만 만들어 재사용한다.
@@ -17,5 +18,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 @Retention(RUNTIME)
 @SpringBootTest
 @AutoConfigureMockMvc
+@Import(DatabaseCleaner.class)
 public @interface IntegrationTest {
 }

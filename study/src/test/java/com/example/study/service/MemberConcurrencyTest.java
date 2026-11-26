@@ -10,6 +10,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import com.example.study.DatabaseCleaner;
 import com.example.study.IntegrationTest;
 import com.example.study.common.exception.BusinessException;
 import com.example.study.common.exception.ErrorCode;
@@ -29,9 +30,12 @@ class MemberConcurrencyTest {
     @Autowired
     MemberRepository memberRepository;
 
+    @Autowired
+    DatabaseCleaner databaseCleaner;
+
     @BeforeEach
     void clean() {
-        memberRepository.deleteAll();
+        databaseCleaner.clean();
     }
 
     @RepeatedTest(3)

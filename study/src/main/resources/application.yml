@@ -17,6 +17,15 @@ spring:
       hibernate:
         format_sql: true
 
+  jackson:
+    deserialization:
+      # 정원 2.5 같은 값을 2로 바꾸지 않는다.
+      accept-float-as-int: false
+    datatype:
+      enum:
+        # 요일·모집 상태를 순서 번호로 받지 않는다.
+        fail-on-numbers-for-enums: true
+
 server:
   servlet:
     session:
